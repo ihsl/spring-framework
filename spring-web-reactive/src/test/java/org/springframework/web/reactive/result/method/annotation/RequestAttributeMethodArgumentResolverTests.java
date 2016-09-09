@@ -16,13 +16,11 @@
 package org.springframework.web.reactive.result.method.annotation;
 
 import java.lang.reflect.Method;
-import java.net.URI;
 import java.util.Optional;
 
 import org.junit.Before;
 import org.junit.Test;
 import reactor.core.publisher.Mono;
-import reactor.test.TestSubscriber;
 
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.core.DefaultParameterNameDiscoverer;
@@ -32,9 +30,10 @@ import org.springframework.core.annotation.SynthesizingMethodParameter;
 import org.springframework.core.convert.ConversionService;
 import org.springframework.core.convert.support.DefaultConversionService;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.server.reactive.MockServerHttpRequest;
-import org.springframework.http.server.reactive.MockServerHttpResponse;
+import org.springframework.mock.http.server.reactive.test.MockServerHttpRequest;
+import org.springframework.mock.http.server.reactive.test.MockServerHttpResponse;
 import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.tests.TestSubscriber;
 import org.springframework.util.ReflectionUtils;
 import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.server.ServerWebExchange;
@@ -72,7 +71,7 @@ public class RequestAttributeMethodArgumentResolverTests {
 		ConversionService cs = new DefaultConversionService();
 		this.resolver = new RequestAttributeMethodArgumentResolver(cs, context.getBeanFactory());
 
-		ServerHttpRequest request = new MockServerHttpRequest(HttpMethod.GET, new URI("/"));
+		ServerHttpRequest request = new MockServerHttpRequest(HttpMethod.GET, "/");
 		WebSessionManager sessionManager = new MockWebSessionManager();
 		this.exchange = new DefaultServerWebExchange(request, new MockServerHttpResponse(), sessionManager);
 

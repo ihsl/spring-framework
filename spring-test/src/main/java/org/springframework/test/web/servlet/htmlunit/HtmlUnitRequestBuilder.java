@@ -45,9 +45,12 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.web.servlet.RequestBuilder;
 import org.springframework.test.web.servlet.SmartRequestBuilder;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.util.Assert;
 import org.springframework.util.ObjectUtils;
+import org.springframework.util.StringUtils;
 import org.springframework.web.util.UriComponents;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -210,9 +213,9 @@ final class HtmlUnitRequestBuilder implements RequestBuilder, Mergeable {
 
 	private void authType(MockHttpServletRequest request) {
 		String authorization = header("Authorization");
-		if (authorization != null) {
-			String[] authzParts = authorization.split(": ");
-			request.setAuthType(authzParts[0]);
+		String[] authSplit = StringUtils.split(authorization, ": ");
+		if (authSplit != null) {
+			request.setAuthType(authSplit[0]);
 		}
 	}
 
@@ -347,9 +350,9 @@ final class HtmlUnitRequestBuilder implements RequestBuilder, Mergeable {
 			request.addPreferredLocale(Locale.getDefault());
 		}
 		else {
-			String[] locales = locale.split(", ");
-			for (int i = locales.length - 1; i >= 0; i--) {
-				request.addPreferredLocale(parseLocale(locales[i]));
+			String[] tokens = StringUtils.tokenizeToStringArray(locale, ",");
+			for (int i = tokens.length - 1; i >= 0; i--) {
+				request.addPreferredLocale(parseLocale(tokens[i]));
 			}
 		}
 	}
@@ -432,16 +435,19 @@ final class HtmlUnitRequestBuilder implements RequestBuilder, Mergeable {
 
 	@Override
 	public Object merge(Object parent) {
-		if (parent == null) {
-			return this;
-		}
 		if (parent instanceof RequestBuilder) {
-			this.parentBuilder = (RequestBuilder) parent;
+			if (parent instanceof MockHttpServletRequestBuilder) {
+				MockHttpServletRequestBuilder copiedParent = MockMvcRequestBuilders.get("/");
+				copiedParent.merge(parent);
+				this.parentBuilder = copiedParent;
+			}
+			else {
+				this.parentBuilder = (RequestBuilder) parent;
+			}
+			if (parent instanceof SmartRequestBuilder) {
+				this.parentPostProcessor = (SmartRequestBuilder) parent;
+			}
 		}
-		if (parent instanceof SmartRequestBuilder) {
-			this.parentPostProcessor = (SmartRequestBuilder) parent;
-		}
-
 		return this;
 	}
 

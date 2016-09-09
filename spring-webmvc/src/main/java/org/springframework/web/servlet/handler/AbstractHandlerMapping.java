@@ -64,8 +64,7 @@ import org.springframework.web.util.UrlPathHelper;
  * @see #setInterceptors
  * @see org.springframework.web.servlet.HandlerInterceptor
  */
-public abstract class AbstractHandlerMapping extends WebApplicationObjectSupport
-		implements HandlerMapping, Ordered {
+public abstract class AbstractHandlerMapping extends WebApplicationObjectSupport implements HandlerMapping, Ordered {
 
 	private int order = Integer.MAX_VALUE;  // default: same as non-Ordered
 
@@ -197,7 +196,7 @@ public abstract class AbstractHandlerMapping extends WebApplicationObjectSupport
 	 * @see org.springframework.web.servlet.HandlerInterceptor
 	 * @see org.springframework.web.context.request.WebRequestInterceptor
 	 */
-	public void setInterceptors(Object[] interceptors) {
+	public void setInterceptors(Object... interceptors) {
 		this.interceptors.addAll(Arrays.asList(interceptors));
 	}
 
@@ -235,6 +234,7 @@ public abstract class AbstractHandlerMapping extends WebApplicationObjectSupport
 	public Map<String, CorsConfiguration> getCorsConfigurations() {
 		return this.corsConfigSource.getCorsConfigurations();
 	}
+
 
 	/**
 	 * Initializes the interceptors.
@@ -338,6 +338,7 @@ public abstract class AbstractHandlerMapping extends WebApplicationObjectSupport
 		int count = mappedInterceptors.size();
 		return (count > 0 ? mappedInterceptors.toArray(new MappedInterceptor[count]) : null);
 	}
+
 
 	/**
 	 * Look up a handler for the given request, falling back to the default
@@ -480,9 +481,7 @@ public abstract class AbstractHandlerMapping extends WebApplicationObjectSupport
 		}
 
 		@Override
-		public void handleRequest(HttpServletRequest request, HttpServletResponse response)
-				throws IOException {
-
+		public void handleRequest(HttpServletRequest request, HttpServletResponse response) throws IOException {
 			corsProcessor.processRequest(this.config, request, response);
 		}
 
@@ -502,8 +501,8 @@ public abstract class AbstractHandlerMapping extends WebApplicationObjectSupport
 		}
 
 		@Override
-		public boolean preHandle(HttpServletRequest request, HttpServletResponse response,
-				Object handler) throws Exception {
+		public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler)
+				throws Exception {
 
 			return corsProcessor.processRequest(this.config, request, response);
 		}

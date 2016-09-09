@@ -16,7 +16,6 @@
 
 package org.springframework.web.reactive.result.method.annotation;
 
-import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -36,8 +35,8 @@ import org.springframework.http.codec.HttpMessageWriter;
 import org.springframework.http.codec.ResourceHttpMessageWriter;
 import org.springframework.http.codec.json.Jackson2JsonEncoder;
 import org.springframework.http.codec.xml.Jaxb2XmlEncoder;
-import org.springframework.http.server.reactive.MockServerHttpRequest;
-import org.springframework.http.server.reactive.MockServerHttpResponse;
+import org.springframework.mock.http.server.reactive.test.MockServerHttpRequest;
+import org.springframework.mock.http.server.reactive.test.MockServerHttpResponse;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.ExtendedModelMap;
@@ -78,7 +77,7 @@ public class ResponseBodyResultHandlerTests {
 	@Before
 	public void setUp() throws Exception {
 		this.resultHandler = createHandler();
-		ServerHttpRequest request = new MockServerHttpRequest(HttpMethod.GET, new URI("/path"));
+		ServerHttpRequest request = new MockServerHttpRequest(HttpMethod.GET, "/path");
 		this.exchange = new DefaultServerWebExchange(request, this.response, new MockWebSessionManager());
 	}
 

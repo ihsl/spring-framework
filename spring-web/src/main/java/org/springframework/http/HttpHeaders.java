@@ -17,8 +17,10 @@
 package org.springframework.http;
 
 import java.io.Serializable;
+import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -474,7 +476,7 @@ public class HttpHeaders implements MultiValueMap<String, String>, Serializable 
 		List<HttpMethod> result = new ArrayList<>();
 		String value = getFirst(ACCESS_CONTROL_ALLOW_METHODS);
 		if (value != null) {
-			String[] tokens = StringUtils.tokenizeToStringArray(value, ",", true, true);
+			String[] tokens = StringUtils.tokenizeToStringArray(value, ",");
 			for (String token : tokens) {
 				HttpMethod resolved = HttpMethod.resolve(token);
 				if (resolved != null) {
@@ -546,8 +548,8 @@ public class HttpHeaders implements MultiValueMap<String, String>, Serializable 
 	/**
 	 * Set the (new) value of the {@code Access-Control-Request-Method} request header.
 	 */
-	public void setAccessControlRequestMethod(HttpMethod requestedMethod) {
-		set(ACCESS_CONTROL_REQUEST_METHOD, requestedMethod.name());
+	public void setAccessControlRequestMethod(HttpMethod requestMethod) {
+		set(ACCESS_CONTROL_REQUEST_METHOD, requestMethod.name());
 	}
 
 	/**
@@ -578,10 +580,10 @@ public class HttpHeaders implements MultiValueMap<String, String>, Serializable 
 	 * as specified by the {@code Accept-Charset} header.
 	 */
 	public List<Charset> getAcceptCharset() {
-		List<Charset> result = new ArrayList<>();
 		String value = getFirst(ACCEPT_CHARSET);
 		if (value != null) {
-			String[] tokens = value.split(",\\s*");
+			String[] tokens = StringUtils.tokenizeToStringArray(value, ",");
+			List<Charset> result = new ArrayList<>(tokens.length);
 			for (String token : tokens) {
 				int paramIdx = token.indexOf(';');
 				String charsetName;
@@ -595,8 +597,11 @@ public class HttpHeaders implements MultiValueMap<String, String>, Serializable 
 					result.add(Charset.forName(charsetName));
 				}
 			}
+			return result;
 		}
-		return result;
+		else {
+			return Collections.emptyList();
+		}
 	}
 
 	/**
@@ -615,8 +620,8 @@ public class HttpHeaders implements MultiValueMap<String, String>, Serializable 
 	public Set<HttpMethod> getAllow() {
 		String value = getFirst(ALLOW);
 		if (!StringUtils.isEmpty(value)) {
-			List<HttpMethod> result = new LinkedList<>();
-			String[] tokens = value.split(",\\s*");
+			String[] tokens = StringUtils.tokenizeToStringArray(value, ",");
+			List<HttpMethod> result = new ArrayList<>(tokens.length);
 			for (String token : tokens) {
 				HttpMethod resolved = HttpMethod.resolve(token);
 				if (resolved != null) {
@@ -672,12 +677,33 @@ public class HttpHeaders implements MultiValueMap<String, String>, Serializable 
 	 * @param filename the filename (may be {@code null})
 	 */
 	public void setContentDispositionFormData(String name, String filename) {
+		setContentDispositionFormData(name, filename, null);
+	}
+
+	/**
+	 * Set the (new) value of the {@code Content-Disposition} header
+	 * for {@code form-data}, optionally encoding the filename using the RFC 5987.
+	 * <p>Only the US-ASCII, UTF-8 and ISO-8859-1 charsets are supported.
+	 * @param name the control name
+	 * @param filename the filename (may be {@code null})
+	 * @param charset the charset used for the filename (may be {@code null})
+	 * @since 4.3.3
+	 * @see #setContentDispositionFormData(String, String)
+	 * @see <a href="https://tools.ietf.org/html/rfc7230#section-3.2.4">RFC 7230 Section 3.2.4</a>
+	 */
+	public void setContentDispositionFormData(String name, String filename, Charset charset) {
 		Assert.notNull(name, "'name' must not be null");
 		StringBuilder builder = new StringBuilder("form-data; name=\"");
 		builder.append(name).append('\"');
 		if (filename != null) {
-			builder.append("; filename=\"");
-			builder.append(filename).append('\"');
+			if(charset == null || StandardCharsets.US_ASCII.equals(charset)) {
+				builder.append("; filename=\"");
+				builder.append(filename).append('\"');
+			}
+			else {
+				builder.append("; filename*=");
+				builder.append(encodeHeaderFieldParam(filename, charset));
+			}
 		}
 		set(CONTENT_DISPOSITION, builder.toString());
 	}
@@ -778,6 +804,49 @@ public class HttpHeaders implements MultiValueMap<String, String>, Serializable 
 	 */
 	public long getExpires() {
 		return getFirstDate(EXPIRES, false);
+	}
+
+	/**
+	 * Set the (new) value of the {@code Host} header.
+	 * <p>If the given {@linkplain InetSocketAddress#getPort() port} is {@code 0},
+	 * the host header will only contain the
+	 * {@linkplain InetSocketAddress#getHostString() hostname}.
+	 * @since 5.0
+	 */
+	public void setHost(InetSocketAddress host) {
+		String value = (host.getPort() != 0 ?
+				String.format("%s:%d", host.getHostString(), host.getPort()) : host.getHostString());
+		set(HOST, value);
+	}
+
+	/**
+	 * Return the value of the required {@code Host} header.
+	 * <p>If the header value does not contain a port, the returned
+	 * {@linkplain InetSocketAddress#getPort() port} will be {@code 0}.
+	 * @since 5.0
+	 */
+	public InetSocketAddress getHost() {
+		String value = getFirst(HOST);
+		if (value == null) {
+			return null;
+		}
+		int idx = value.lastIndexOf(':');
+		String hostname = null;
+		int port = 0;
+		if (idx != -1 && idx < value.length() - 1) {
+			hostname = value.substring(0, idx);
+			String portString = value.substring(idx + 1);
+			try {
+				port = Integer.parseInt(portString);
+			}
+			catch (NumberFormatException ex) {
+				// ignored
+			}
+		}
+		if (hostname == null) {
+			hostname = value;
+		}
+		return InetSocketAddress.createUnresolved(hostname, port);
 	}
 
 	/**
@@ -1280,6 +1349,47 @@ public class HttpHeaders implements MultiValueMap<String, String>, Serializable 
 	 */
 	public static HttpHeaders readOnlyHttpHeaders(HttpHeaders headers) {
 		return new HttpHeaders(headers, true);
+	}
+
+	/**
+	 * Encode the given header field param as describe in RFC 5987.
+	 * @param input the header field param
+	 * @param charset the charset of the header field param string
+	 * @return the encoded header field param
+	 * @see <a href="https://tools.ietf.org/html/rfc5987">RFC 5987</a>
+	 */
+	static String encodeHeaderFieldParam(String input, Charset charset) {
+		Assert.notNull(input, "Input String should not be null");
+		Assert.notNull(charset, "Charset should not be null");
+		if (StandardCharsets.US_ASCII.equals(charset)) {
+			return input;
+		}
+		Assert.isTrue(StandardCharsets.UTF_8.equals(charset) || StandardCharsets.ISO_8859_1.equals(charset),
+				"Charset should be UTF-8 or ISO-8859-1");
+		byte[] source = input.getBytes(charset);
+		int len = source.length;
+		StringBuilder sb = new StringBuilder(len << 1);
+		sb.append(charset.name());
+		sb.append("''");
+		for (byte b : source) {
+			if (isRFC5987AttrChar(b)) {
+				sb.append((char) b);
+			}
+			else {
+				sb.append('%');
+				char hex1 = Character.toUpperCase(Character.forDigit((b >> 4) & 0xF, 16));
+				char hex2 = Character.toUpperCase(Character.forDigit(b & 0xF, 16));
+				sb.append(hex1);
+				sb.append(hex2);
+			}
+		}
+		return sb.toString();
+	}
+
+	private static boolean isRFC5987AttrChar(byte c) {
+		return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+				c == '!' || c == '#' || c == '$' || c == '&' || c == '+' || c == '-' ||
+				c == '.' || c == '^' || c == '_' || c == '`' || c == '|' || c == '~';
 	}
 
 }

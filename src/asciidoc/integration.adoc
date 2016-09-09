@@ -7639,7 +7639,6 @@ set some default property values, or specify a custom `MetaClass`.
 	public interface GroovyObjectCustomizer {
 
 		void customize(GroovyObject goo);
-
 	}
 ----
 
@@ -7678,12 +7677,12 @@ of a `GroovyObjectCustomizer` is easy if you are using the Spring namespace supp
 [subs="verbatim,quotes"]
 ----
 	<!-- define the GroovyObjectCustomizer just like any other bean -->
-	<bean id="tracingCustomizer" class="example.SimpleMethodTracingCustomizer" />
+	<bean id="tracingCustomizer" class="example.SimpleMethodTracingCustomizer"/>
 
 		<!-- ... and plug it into the desired Groovy bean via the 'customizer-ref' attribute -->
 		<lang:groovy id="calculator"
 			script-source="classpath:org/springframework/scripting/groovy/Calculator.groovy"
-			customizer-ref="tracingCustomizer" />
+			customizer-ref="tracingCustomizer"/>
 ----
 
 If you are not using the Spring namespace support, you can still use the
@@ -7696,12 +7695,19 @@ If you are not using the Spring namespace support, you can still use the
 		<constructor-arg value="classpath:org/springframework/scripting/groovy/Calculator.groovy"/>
 		<!-- define the GroovyObjectCustomizer (as an inner bean) -->
 		<constructor-arg>
-			<bean id="tracingCustomizer" class="example.SimpleMethodTracingCustomizer" />
+			<bean id="tracingCustomizer" class="example.SimpleMethodTracingCustomizer"/>
 		</constructor-arg>
 	</bean>
 
 	<bean class="org.springframework.scripting.support.ScriptFactoryPostProcessor"/>
 ----
+
+[NOTE]
+====
+As of Spring Framework 4.3.3, you may also specify a Groovy `CompilationCustomizer`
+(such as an `ImportCustomizer`) or even a full Groovy `CompilerConfiguration` object
+in the same place as Spring's `GroovyObjectCustomizer`.
+====
 
 
 
@@ -8050,10 +8056,10 @@ materialized by the `org.springframework.cache.Cache` and
 
 There are <<cache-store-configuration,a few implementations>> of that abstraction
 available out of the box: JDK `java.util.concurrent.ConcurrentMap` based caches,
-http://ehcache.org/[EhCache], Gemfire cache,
+http://ehcache.org/[Ehcache 2.x], Gemfire cache,
 https://github.com/ben-manes/caffeine/wiki[Caffeine] and JSR-107 compliant
-caches. See <<cache-plug>> for more information on plugging in other cache
-stores/providers.
+caches (e.g. Ehcache 3.x). See <<cache-plug>> for more information on plugging in
+other cache stores/providers.
 
 [IMPORTANT]
 ====
@@ -8333,6 +8339,18 @@ only want to cache paperback books:
 	public Book findBook(String name)
 ----
 
+The cache abstraction supports `java.util.Optional`, using its content as cached value
+only if it present. `#result` always refers to the business entity and never on a
+supported wrapper so the previous example can be rewritten as follows:
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Cacheable(cacheNames="book", condition="#name.length < 32", **unless="#result.hardback"**)
+	public Optional<Book> findBook(String name)
+----
+
+Note that `result` still refers to `Book` and not `Optional`.
 
 [[cache-spel-context]]
 ===== Available caching SpEL evaluation context
@@ -8389,7 +8407,8 @@ conditional computations:
 | evaluation context
 | The result of the method call (the value to be cached). Only available in `unless`
   expressions, `cache put` expressions (to compute the `key`), or `cache evict`
-  expressions (when `beforeInvocation` is `false`).
+  expressions (when `beforeInvocation` is `false`). For supported wrappers such as
+  `Optional`, `#result` refers to the actual object, not the wrapper.
 | `#result`
 |===
 
@@ -8950,9 +8969,11 @@ eviction contracts.
 
 
 [[cache-store-configuration-ehcache]]
-==== EhCache-based Cache
+==== Ehcache-based Cache
 
-The EhCache implementation is located under `org.springframework.cache.ehcache` package.
+NOTE: Ehcache 3.x is fully JSR-107 compliant and no dedicated support is required for it.
+
+The Ehcache 2.x implementation is located under `org.springframework.cache.ehcache` package.
 Again, to use it, one simply needs to declare the appropriate `CacheManager`:
 
 [source,xml,indent=0]

@@ -22,16 +22,16 @@ import org.junit.Before;
 import org.junit.Test;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.test.TestSubscriber;
 
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
-import org.springframework.http.codec.SseEvent;
+import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.http.server.reactive.AbstractHttpHandlerIntegrationTests;
 import org.springframework.http.server.reactive.HttpHandler;
+import org.springframework.tests.TestSubscriber;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.reactive.WebClient;
@@ -65,10 +65,7 @@ public class SseIntegrationTests extends AbstractHttpHandlerIntegrationTests {
 		this.wac.register(TestConfiguration.class);
 		this.wac.refresh();
 
-		DispatcherHandler webHandler = new DispatcherHandler();
-		webHandler.setApplicationContext(this.wac);
-
-		return WebHttpHandlerBuilder.webHandler(webHandler).build();
+		return WebHttpHandlerBuilder.webHandler(new DispatcherHandler(this.wac)).build();
 	}
 
 	@Test
@@ -138,14 +135,11 @@ public class SseIntegrationTests extends AbstractHttpHandlerIntegrationTests {
 		}
 
 		@RequestMapping("/sse/event")
-		Flux<SseEvent> sse() {
-			return Flux.interval(Duration.ofMillis(100)).map(l -> {
-				SseEvent event = new SseEvent();
-				event.setId(Long.toString(l));
-				event.setData("foo");
-				event.setComment("bar");
-				return event;
-			}).take(2);
+		Flux<ServerSentEvent<String>> sse() {
+			return Flux.interval(Duration.ofMillis(100)).map(l -> ServerSentEvent.builder("foo")
+					.id(Long.toString(l))
+					.comment("bar")
+					.build()).take(2);
 		}
 
 	}

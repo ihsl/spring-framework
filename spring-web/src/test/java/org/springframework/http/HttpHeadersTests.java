@@ -16,6 +16,7 @@
 
 package org.springframework.http;
 
+import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.Charset;
@@ -87,7 +88,7 @@ public class HttpHeadersTests {
 	@Test
 	public void acceptCharsets() {
 		Charset charset1 = StandardCharsets.UTF_8;
-		Charset charset2 = Charset.forName("ISO-8859-1");
+		Charset charset2 = StandardCharsets.ISO_8859_1;
 		List<Charset> charsets = new ArrayList<>(2);
 		charsets.add(charset1);
 		charsets.add(charset2);
@@ -99,7 +100,7 @@ public class HttpHeadersTests {
 	@Test
 	public void acceptCharsetWildcard() {
 		headers.set("Accept-Charset", "ISO-8859-1,utf-8;q=0.7,*;q=0.7");
-		assertEquals("Invalid Accept header", Arrays.asList(Charset.forName("ISO-8859-1"), StandardCharsets.UTF_8),
+		assertEquals("Invalid Accept header", Arrays.asList(StandardCharsets.ISO_8859_1, StandardCharsets.UTF_8),
 				headers.getAcceptCharset());
 	}
 
@@ -141,6 +142,22 @@ public class HttpHeadersTests {
 		headers.setETag(eTag);
 		assertEquals("Invalid ETag header", eTag, headers.getETag());
 		assertEquals("Invalid ETag header", "\"v2.6\"", headers.getFirst("ETag"));
+	}
+
+	@Test
+	public void host() {
+		InetSocketAddress host = InetSocketAddress.createUnresolved("localhost", 8080);
+		headers.setHost(host);
+		assertEquals("Invalid Host header", host, headers.getHost());
+		assertEquals("Invalid Host header", "localhost:8080", headers.getFirst("Host"));
+	}
+
+	@Test
+	public void hostNoPort() {
+		InetSocketAddress host = InetSocketAddress.createUnresolved("localhost", 0);
+		headers.setHost(host);
+		assertEquals("Invalid Host header", host, headers.getHost());
+		assertEquals("Invalid Host header", "localhost", headers.getFirst("Host"));
 	}
 
 	@Test(expected = IllegalArgumentException.class)
@@ -321,6 +338,11 @@ public class HttpHeadersTests {
 		headers.setContentDispositionFormData("name", "filename");
 		assertEquals("Invalid Content-Disposition header", "form-data; name=\"name\"; filename=\"filename\"",
 				headers.getFirst("Content-Disposition"));
+
+		headers.setContentDispositionFormData("name", "中文.txt", StandardCharsets.UTF_8);
+		assertEquals("Invalid Content-Disposition header",
+				"form-data; name=\"name\"; filename*=UTF-8''%E4%B8%AD%E6%96%87.txt",
+				headers.getFirst("Content-Disposition"));
 	}
 
 	@Test  // SPR-11917
@@ -403,6 +425,20 @@ public class HttpHeadersTests {
 		assertNull(headers.getAccessControlRequestMethod());
 		headers.setAccessControlRequestMethod(HttpMethod.POST);
 		assertEquals(HttpMethod.POST, headers.getAccessControlRequestMethod());
+	}
+
+	@Test  // SPR-14547
+	public void encodeHeaderFieldParam() {
+		String result = HttpHeaders.encodeHeaderFieldParam("test.txt", StandardCharsets.US_ASCII);
+		assertEquals("test.txt", result);
+
+		result = HttpHeaders.encodeHeaderFieldParam("中文.txt", StandardCharsets.UTF_8);
+		assertEquals("UTF-8''%E4%B8%AD%E6%96%87.txt", result);
+	}
+
+	@Test(expected = IllegalArgumentException.class)
+	public void encodeHeaderFieldParamInvalidCharset() {
+		HttpHeaders.encodeHeaderFieldParam("test", StandardCharsets.UTF_16);
 	}
 
 }

@@ -16,7 +16,6 @@
 
 package org.springframework.web.reactive.result.view;
 
-import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Collections;
@@ -28,7 +27,6 @@ import java.util.Map;
 
 import org.junit.Before;
 import org.junit.Test;
-import reactor.test.TestSubscriber;
 
 import org.springframework.core.MethodParameter;
 import org.springframework.core.codec.CharSequenceEncoder;
@@ -37,8 +35,9 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.codec.json.Jackson2JsonEncoder;
 import org.springframework.http.codec.xml.Jaxb2XmlEncoder;
-import org.springframework.http.server.reactive.MockServerHttpRequest;
-import org.springframework.http.server.reactive.MockServerHttpResponse;
+import org.springframework.mock.http.server.reactive.test.MockServerHttpRequest;
+import org.springframework.mock.http.server.reactive.test.MockServerHttpResponse;
+import org.springframework.tests.TestSubscriber;
 import org.springframework.ui.ExtendedModelMap;
 import org.springframework.ui.ModelMap;
 import org.springframework.util.MimeType;
@@ -161,7 +160,7 @@ public class HttpMessageWriterViewTests {
 		this.model.addAttribute("pojoData", pojoData);
 		this.view.setModelKeys(Collections.singleton("pojoData"));
 
-		MockServerHttpRequest request = new MockServerHttpRequest(HttpMethod.GET, new URI("/path"));
+		MockServerHttpRequest request = new MockServerHttpRequest(HttpMethod.GET, "/path");
 		MockServerHttpResponse response = new MockServerHttpResponse();
 		WebSessionManager manager = new DefaultWebSessionManager();
 		ServerWebExchange exchange = new DefaultServerWebExchange(request, response, manager);

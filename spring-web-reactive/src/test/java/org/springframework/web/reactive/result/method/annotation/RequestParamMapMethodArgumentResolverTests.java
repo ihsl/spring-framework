@@ -17,7 +17,6 @@
 package org.springframework.web.reactive.result.method.annotation;
 
 import java.lang.reflect.Method;
-import java.net.URI;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Map;
@@ -29,8 +28,8 @@ import reactor.core.publisher.Mono;
 import org.springframework.core.MethodParameter;
 import org.springframework.core.annotation.SynthesizingMethodParameter;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.server.reactive.MockServerHttpRequest;
-import org.springframework.http.server.reactive.MockServerHttpResponse;
+import org.springframework.mock.http.server.reactive.test.MockServerHttpRequest;
+import org.springframework.mock.http.server.reactive.test.MockServerHttpResponse;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
@@ -66,7 +65,7 @@ public class RequestParamMapMethodArgumentResolverTests {
 	public void setUp() throws Exception {
 		this.resolver = new RequestParamMapMethodArgumentResolver();
 
-		ServerHttpRequest request = new MockServerHttpRequest(HttpMethod.GET, new URI("/"));
+		ServerHttpRequest request = new MockServerHttpRequest(HttpMethod.GET, "/");
 		WebSessionManager sessionManager = new MockWebSessionManager();
 		this.exchange = new DefaultServerWebExchange(request, new MockServerHttpResponse(), sessionManager);
 

@@ -50,6 +50,7 @@ import java.util.TimeZone;
  * @author Rick Evans
  * @author Arjen Poutsma
  * @author Sam Brannen
+ * @author Brian Clozel
  * @since 16 April 2001
  */
 public abstract class StringUtils {

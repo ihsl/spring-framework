@@ -29,7 +29,7 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.core.publisher.OperatorAdapter;
+import reactor.core.publisher.Operators;
 import reactor.core.publisher.Signal;
 
 import static org.junit.Assert.assertEquals;
@@ -114,7 +114,7 @@ public class ChannelSendOperatorTests {
 			int i = ++idx;
 			subscriber.next(String.valueOf(i));
 			if (i == 3) {
-				subscriber.fail(error);
+				subscriber.error(error);
 			}
 			return i;
 		});
@@ -148,7 +148,7 @@ public class ChannelSendOperatorTests {
 			};
 		}
 
-		private class WriteSubscriber extends OperatorAdapter<String, Void> {
+		private class WriteSubscriber extends Operators.SubscriberAdapter<String, Void> {
 
 			public WriteSubscriber(Subscriber<? super Void> subscriber) {
 				super(subscriber);

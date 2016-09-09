@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2015 the original author or authors.
+ * Copyright 2002-2016 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,23 +15,23 @@
  */
 package org.springframework.web.reactive.result.method;
 
-import java.net.URI;
 import java.util.Collections;
 import java.util.Optional;
 
 import org.junit.Before;
 import org.junit.Test;
 import reactor.core.publisher.Mono;
-import reactor.test.TestSubscriber;
 
 import org.springframework.http.HttpMethod;
-import org.springframework.http.server.reactive.MockServerHttpRequest;
-import org.springframework.http.server.reactive.MockServerHttpResponse;
+import org.springframework.mock.http.server.reactive.test.MockServerHttpRequest;
+import org.springframework.mock.http.server.reactive.test.MockServerHttpResponse;
+import org.springframework.tests.TestSubscriber;
 import org.springframework.ui.ExtendedModelMap;
 import org.springframework.ui.ModelMap;
 import org.springframework.web.reactive.HandlerResult;
 import org.springframework.web.reactive.result.ResolvableMethod;
 import org.springframework.web.server.ServerWebExchange;
+import org.springframework.web.server.UnsupportedMediaTypeStatusException;
 import org.springframework.web.server.adapter.DefaultServerWebExchange;
 import org.springframework.web.server.session.MockWebSessionManager;
 
@@ -56,7 +56,7 @@ public class InvocableHandlerMethodTests {
 	@Before
 	public void setUp() throws Exception {
 		this.exchange = new DefaultServerWebExchange(
-				new MockServerHttpRequest(HttpMethod.GET, new URI("http://localhost:8080/path")),
+				new MockServerHttpRequest(HttpMethod.GET, "http://localhost:8080/path"),
 				new MockServerHttpResponse(),
 				new MockWebSessionManager());
 	}
@@ -102,25 +102,12 @@ public class InvocableHandlerMethodTests {
 	@Test
 	public void resolverThrowsException() throws Exception {
 		InvocableHandlerMethod hm = handlerMethod("singleArg");
-		addResolver(hm, Mono.error(new IllegalStateException("boo")));
+		addResolver(hm, Mono.error(new UnsupportedMediaTypeStatusException("boo")));
 		Mono<HandlerResult> mono = hm.invokeForRequest(this.exchange, this.model);
 
 		TestSubscriber.subscribe(mono)
-				.assertError(IllegalStateException.class)
-				.assertErrorMessage("Error resolving argument [0] of type [java.lang.String] " +
-						"on method [" + hm.getMethod().toGenericString() + "]");
-	}
-
-	@Test
-	public void resolverWithErrorSignal() throws Exception {
-		InvocableHandlerMethod hm = handlerMethod("singleArg");
-		addResolver(hm, Mono.error(new IllegalStateException("boo")));
-		Mono<HandlerResult> mono = hm.invokeForRequest(this.exchange, this.model);
-
-		TestSubscriber.subscribe(mono)
-				.assertError(IllegalStateException.class)
-				.assertErrorMessage("Error resolving argument [0] of type [java.lang.String] " +
-						"on method [" + hm.getMethod().toGenericString() + "]");
+				.assertError(UnsupportedMediaTypeStatusException.class)
+				.assertErrorMessage("Request failure [status: 415, reason: \"boo\"]");
 	}
 
 	@Test

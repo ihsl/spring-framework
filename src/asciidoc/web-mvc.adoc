@@ -171,7 +171,7 @@ Java EE Servlet configuration in a Servlet 3.0+ environment:
 
 		@Override
 		public void onStartup(ServletContext container) {
-			ServletRegistration.Dynamic registration = container.addServlet("dispatcher", new DispatcherServlet());
+			ServletRegistration.Dynamic registration = container.addServlet("example", new DispatcherServlet());
 			registration.setLoadOnStartup(1);
 			registration.addMapping("/example/*");
 		}
@@ -793,7 +793,7 @@ to the value of a URI template variable:
 	}
 ----
 
-The URI Template " `/owners/{ownerId}`" specifies the variable name `ownerId`. When the
+The URI Template ++"/owners/{ownerId}"++ specifies the variable name `ownerId`. When the
 controller handles this request, the value of `ownerId` is set to the value found in the
 appropriate part of the URI. For example, when a request comes in for `/owners/fred`,
 the value of `ownerId` is `fred`.
@@ -3991,7 +3991,8 @@ config). Listed below are some of the exceptions handled by this resolver and th
 corresponding status codes:
 
 |===
-| Exception| HTTP Status Code
+| Exception
+| HTTP Status Code
 
 | `BindException`
 | 400 (Bad Request)
@@ -4017,6 +4018,9 @@ corresponding status codes:
 | `MethodArgumentNotValidException`
 | 400 (Bad Request)
 
+| `MissingPathVariableException`
+| 500 (Internal Server Error)
+
 | `MissingServletRequestParameterException`
 | 400 (Bad Request)
 
@@ -4031,12 +4035,6 @@ corresponding status codes:
 
 | `TypeMismatchException`
 | 400 (Bad Request)
-
-| `MissingPathVariableException`
-| 500 (Internal Server Error)
-
-| `NoHandlerFoundException`
-| 404 (Not Found)
 |===
 
 The `DefaultHandlerExceptionResolver` works transparently by setting the status of the
@@ -4831,6 +4829,12 @@ is present on the classpath.
 .. `MappingJackson2XmlHttpMessageConverter` converts to/from XML -- added if
 https://github.com/FasterXML/jackson-dataformat-xml[Jackson 2 XML extension] is present
 on the classpath.
+.. `MappingJackson2SmileHttpMessageConverter` converts to/from Smile (binary JSON) -- added if
+https://github.com/FasterXML/jackson-dataformats-binary/tree/master/smile[Jackson 2 Smile extension]
+is present on the classpath.
+.. `MappingJackson2CborHttpMessageConverter` converts to/from CBOR -- added if
+https://github.com/FasterXML/jackson-dataformats-binary/tree/master/cbor[Jackson 2 CBOR extension]
+is present on the classpath.
 .. `AtomFeedHttpMessageConverter` converts Atom feeds -- added if Rome is present on the
 classpath.
 .. `RssChannelHttpMessageConverter` converts RSS feeds -- added if Rome is present on

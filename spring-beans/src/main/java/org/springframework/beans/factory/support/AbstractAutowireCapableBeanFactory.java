@@ -325,8 +325,8 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 	}
 
 	@Override
-	public Object resolveDependency(DependencyDescriptor descriptor, String beanName) throws BeansException {
-		return resolveDependency(descriptor, beanName, null, null);
+	public Object resolveDependency(DependencyDescriptor descriptor, String requestingBeanName) throws BeansException {
+		return resolveDependency(descriptor, requestingBeanName, null, null);
 	}
 
 
@@ -624,10 +624,11 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 	protected Class<?> determineTargetType(String beanName, RootBeanDefinition mbd, Class<?>... typesToMatch) {
 		Class<?> targetType = mbd.getTargetType();
 		if (targetType == null) {
-			targetType = (mbd.getFactoryMethodName() != null ? getTypeForFactoryMethod(beanName, mbd, typesToMatch) :
+			targetType = (mbd.getFactoryMethodName() != null ?
+					getTypeForFactoryMethod(beanName, mbd, typesToMatch) :
 					resolveBeanClass(mbd, beanName, typesToMatch));
 			if (ObjectUtils.isEmpty(typesToMatch) || getTempClassLoader() == null) {
-				mbd.setTargetType(targetType);
+				mbd.resolvedTargetType = targetType;
 			}
 		}
 		return targetType;
@@ -802,10 +803,14 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 			if (objectType.value != null) {
 				return objectType.value;
 			}
+			else {
+				// No type found for shortcut FactoryBean instance:
+				// fall back to full creation of the FactoryBean instance.
+				return super.getTypeForFactoryBean(beanName, mbd);
+			}
 		}
 
-		// No type found - fall back to full creation of the FactoryBean instance.
-		return super.getTypeForFactoryBean(beanName, mbd);
+		return null;
 	}
 
 	/**
@@ -824,7 +829,7 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 					SmartInstantiationAwareBeanPostProcessor ibp = (SmartInstantiationAwareBeanPostProcessor) bp;
 					exposedObject = ibp.getEarlyBeanReference(exposedObject, beanName);
 					if (exposedObject == null) {
-						return exposedObject;
+						return null;
 					}
 				}
 			}

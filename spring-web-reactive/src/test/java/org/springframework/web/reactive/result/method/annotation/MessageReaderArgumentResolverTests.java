@@ -18,7 +18,6 @@ package org.springframework.web.reactive.result.method.annotation;
 
 import java.io.Serializable;
 import java.lang.reflect.Method;
-import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -31,11 +30,11 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import javax.xml.bind.annotation.XmlRootElement;
 
+import io.reactivex.Flowable;
 import org.junit.Before;
 import org.junit.Test;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.test.TestSubscriber;
 import rx.Observable;
 import rx.Single;
 
@@ -45,12 +44,12 @@ import org.springframework.core.codec.Decoder;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.core.io.buffer.DefaultDataBufferFactory;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.MediaType;
 import org.springframework.http.codec.DecoderHttpMessageReader;
 import org.springframework.http.codec.HttpMessageReader;
 import org.springframework.http.codec.json.Jackson2JsonDecoder;
-import org.springframework.http.server.reactive.MockServerHttpRequest;
-import org.springframework.http.server.reactive.MockServerHttpResponse;
+import org.springframework.mock.http.server.reactive.test.MockServerHttpRequest;
+import org.springframework.mock.http.server.reactive.test.MockServerHttpResponse;
+import org.springframework.tests.TestSubscriber;
 import org.springframework.validation.Errors;
 import org.springframework.validation.Validator;
 import org.springframework.validation.annotation.Validated;
@@ -62,8 +61,12 @@ import org.springframework.web.server.UnsupportedMediaTypeStatusException;
 import org.springframework.web.server.adapter.DefaultServerWebExchange;
 import org.springframework.web.server.session.MockWebSessionManager;
 
-import static org.junit.Assert.*;
-import static org.springframework.core.ResolvableType.*;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.springframework.core.ResolvableType.forClass;
+import static org.springframework.core.ResolvableType.forClassWithGenerics;
 
 /**
  * Unit tests for {@link AbstractMessageReaderArgumentResolver}.
@@ -82,7 +85,7 @@ public class MessageReaderArgumentResolverTests {
 
 	@Before
 	public void setUp() throws Exception {
-		this.request = new MockServerHttpRequest(HttpMethod.POST, new URI("/path"));
+		this.request = new MockServerHttpRequest(HttpMethod.POST, "/path");
 		MockServerHttpResponse response = new MockServerHttpResponse();
 		this.exchange = new DefaultServerWebExchange(this.request, response, new MockWebSessionManager());
 	}
@@ -90,8 +93,7 @@ public class MessageReaderArgumentResolverTests {
 
 	@Test
 	public void missingContentType() throws Exception {
-		String body = "{\"bar\":\"BARBAR\",\"foo\":\"FOOFOO\"}";
-		this.request.writeWith(Flux.just(dataBuffer(body)));
+		this.request.setBody("{\"bar\":\"BARBAR\",\"foo\":\"FOOFOO\"}");
 		ResolvableType type = forClassWithGenerics(Mono.class, TestBean.class);
 		MethodParameter param = this.testMethod.resolveParam(type);
 		Mono<Object> result = this.resolver.readBody(param, true, this.exchange);
@@ -104,8 +106,7 @@ public class MessageReaderArgumentResolverTests {
 
 	@Test @SuppressWarnings("unchecked") // SPR-9942
 	public void emptyBody() throws Exception {
-		this.request.writeWith(Flux.empty());
-		this.request.getHeaders().setContentType(MediaType.APPLICATION_JSON);
+		this.request.setHeader("Content-Type", "application/json");
 		ResolvableType type = forClassWithGenerics(Mono.class, TestBean.class);
 		MethodParameter param = this.testMethod.resolveParam(type);
 		Mono<TestBean> result = (Mono<TestBean>) this.resolver.readBody(param, true, this.exchange).block();
@@ -145,6 +146,16 @@ public class MessageReaderArgumentResolverTests {
 	}
 
 	@Test
+	public void rxJava2SingleTestBean() throws Exception {
+		String body = "{\"bar\":\"b1\",\"foo\":\"f1\"}";
+		ResolvableType type = forClassWithGenerics(io.reactivex.Single.class, TestBean.class);
+		MethodParameter param = this.testMethod.resolveParam(type);
+		io.reactivex.Single<TestBean> single = resolveValue(param, body);
+
+		assertEquals(new TestBean("f1", "b1"), single.blockingGet());
+	}
+
+	@Test
 	public void observableTestBean() throws Exception {
 		String body = "[{\"bar\":\"b1\",\"foo\":\"f1\"},{\"bar\":\"b2\",\"foo\":\"f2\"}]";
 		ResolvableType type = forClassWithGenerics(Observable.class, TestBean.class);
@@ -153,6 +164,28 @@ public class MessageReaderArgumentResolverTests {
 
 		assertEquals(Arrays.asList(new TestBean("f1", "b1"), new TestBean("f2", "b2")),
 				observable.toList().toBlocking().first());
+	}
+
+	@Test
+	public void rxJava2ObservableTestBean() throws Exception {
+		String body = "[{\"bar\":\"b1\",\"foo\":\"f1\"},{\"bar\":\"b2\",\"foo\":\"f2\"}]";
+		ResolvableType type = forClassWithGenerics(io.reactivex.Observable.class, TestBean.class);
+		MethodParameter param = this.testMethod.resolveParam(type);
+		io.reactivex.Observable<?> observable = resolveValue(param, body);
+
+		assertEquals(Arrays.asList(new TestBean("f1", "b1"), new TestBean("f2", "b2")),
+				observable.toList().blockingFirst());
+	}
+
+	@Test
+	public void flowableTestBean() throws Exception {
+		String body = "[{\"bar\":\"b1\",\"foo\":\"f1\"},{\"bar\":\"b2\",\"foo\":\"f2\"}]";
+		ResolvableType type = forClassWithGenerics(Flowable.class, TestBean.class);
+		MethodParameter param = this.testMethod.resolveParam(type);
+		Flowable<?> flowable = resolveValue(param, body);
+
+		assertEquals(Arrays.asList(new TestBean("f1", "b1"), new TestBean("f2", "b2")),
+				flowable.toList().blockingFirst());
 	}
 
 	@Test
@@ -255,10 +288,7 @@ public class MessageReaderArgumentResolverTests {
 
 	@SuppressWarnings("unchecked")
 	private <T> T resolveValue(MethodParameter param, String body) {
-
-		this.request.getHeaders().setContentType(MediaType.APPLICATION_JSON);
-		this.request.writeWith(Flux.just(dataBuffer(body)));
-
+		this.request.setHeader("Content-Type", "application/json").setBody(body);
 		Mono<Object> result = this.resolver.readBody(param, true, this.exchange);
 		Object value = result.block(Duration.ofSeconds(5));
 
@@ -288,7 +318,10 @@ public class MessageReaderArgumentResolverTests {
 			@Validated Mono<TestBean> monoTestBean,
 			@Validated Flux<TestBean> fluxTestBean,
 			Single<TestBean> singleTestBean,
+			io.reactivex.Single<TestBean> rxJava2SingleTestBean,
 			Observable<TestBean> observableTestBean,
+			io.reactivex.Observable<TestBean> rxJava2ObservableTestBean,
+			Flowable<TestBean> flowableTestBean,
 			CompletableFuture<TestBean> futureTestBean,
 			TestBean testBean,
 			Map<String, String> map,

@@ -15,7 +15,6 @@
  */
 package org.springframework.web.reactive.result.method.annotation;
 
-import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -23,12 +22,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
+import io.reactivex.BackpressureStrategy;
+import io.reactivex.Flowable;
 import org.junit.Before;
 import org.junit.Test;
 import reactor.adapter.RxJava1Adapter;
+import reactor.adapter.RxJava2Adapter;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.test.TestSubscriber;
 import rx.Observable;
 import rx.Single;
 
@@ -39,12 +40,12 @@ import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.core.io.buffer.DefaultDataBufferFactory;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.MediaType;
 import org.springframework.http.RequestEntity;
 import org.springframework.http.codec.DecoderHttpMessageReader;
 import org.springframework.http.codec.HttpMessageReader;
-import org.springframework.http.server.reactive.MockServerHttpRequest;
-import org.springframework.http.server.reactive.MockServerHttpResponse;
+import org.springframework.mock.http.server.reactive.test.MockServerHttpRequest;
+import org.springframework.mock.http.server.reactive.test.MockServerHttpResponse;
+import org.springframework.tests.TestSubscriber;
 import org.springframework.ui.ExtendedModelMap;
 import org.springframework.validation.Validator;
 import org.springframework.web.reactive.result.ResolvableMethod;
@@ -67,6 +68,7 @@ import static org.springframework.core.ResolvableType.forClassWithGenerics;
  * {@link MessageReaderArgumentResolverTests}.
  *
  * @author Rossen Stoyanchev
+ * @author Sebastien Deleuze
  */
 public class HttpEntityArgumentResolverTests {
 
@@ -81,7 +83,7 @@ public class HttpEntityArgumentResolverTests {
 
 	@Before
 	public void setUp() throws Exception {
-		this.request = new MockServerHttpRequest(HttpMethod.POST, new URI("/path"));
+		this.request = new MockServerHttpRequest(HttpMethod.POST, "/path");
 		MockServerHttpResponse response = new MockServerHttpResponse();
 		this.exchange = new DefaultServerWebExchange(this.request, response, new MockWebSessionManager());
 	}
@@ -98,9 +100,12 @@ public class HttpEntityArgumentResolverTests {
 		testSupports(httpEntityType(String.class));
 		testSupports(httpEntityType(forClassWithGenerics(Mono.class, String.class)));
 		testSupports(httpEntityType(forClassWithGenerics(Single.class, String.class)));
+		testSupports(httpEntityType(forClassWithGenerics(io.reactivex.Single.class, String.class)));
 		testSupports(httpEntityType(forClassWithGenerics(CompletableFuture.class, String.class)));
 		testSupports(httpEntityType(forClassWithGenerics(Flux.class, String.class)));
 		testSupports(httpEntityType(forClassWithGenerics(Observable.class, String.class)));
+		testSupports(httpEntityType(forClassWithGenerics(io.reactivex.Observable.class, String.class)));
+		testSupports(httpEntityType(forClassWithGenerics(Flowable.class, String.class)));
 		testSupports(forClassWithGenerics(RequestEntity.class, String.class));
 	}
 
@@ -154,11 +159,43 @@ public class HttpEntityArgumentResolverTests {
 	}
 
 	@Test
+	public void emptyBodyWithRxJava2Single() throws Exception {
+		ResolvableType type = httpEntityType(forClassWithGenerics(io.reactivex.Single.class, String.class));
+		HttpEntity<io.reactivex.Single<String>> entity = resolveValueWithEmptyBody(type);
+
+		TestSubscriber.subscribe(RxJava2Adapter.singleToMono(entity.getBody()))
+				.assertNoValues()
+				.assertError(ServerWebInputException.class);
+	}
+
+	@Test
 	public void emptyBodyWithObservable() throws Exception {
 		ResolvableType type = httpEntityType(forClassWithGenerics(Observable.class, String.class));
 		HttpEntity<Observable<String>> entity = resolveValueWithEmptyBody(type);
 
 		TestSubscriber.subscribe(RxJava1Adapter.observableToFlux(entity.getBody()))
+				.assertNoError()
+				.assertComplete()
+				.assertNoValues();
+	}
+
+	@Test
+	public void emptyBodyWithRxJava2Observable() throws Exception {
+		ResolvableType type = httpEntityType(forClassWithGenerics(io.reactivex.Observable.class, String.class));
+		HttpEntity<io.reactivex.Observable<String>> entity = resolveValueWithEmptyBody(type);
+
+		TestSubscriber.subscribe(RxJava2Adapter.observableToFlux(entity.getBody(), BackpressureStrategy.BUFFER))
+				.assertNoError()
+				.assertComplete()
+				.assertNoValues();
+	}
+
+	@Test
+	public void emptyBodyWithFlowable() throws Exception {
+		ResolvableType type = httpEntityType(forClassWithGenerics(Flowable.class, String.class));
+		HttpEntity<Flowable<String>> entity = resolveValueWithEmptyBody(type);
+
+		TestSubscriber.subscribe(RxJava2Adapter.flowableToFlux(entity.getBody()))
 				.assertNoError()
 				.assertComplete()
 				.assertNoValues();
@@ -203,6 +240,16 @@ public class HttpEntityArgumentResolverTests {
 
 		assertEquals(this.request.getHeaders(), httpEntity.getHeaders());
 		assertEquals("line1", httpEntity.getBody().toBlocking().value());
+	}
+
+	@Test
+	public void httpEntityWithRxJava2SingleBody() throws Exception {
+		String body = "line1";
+		ResolvableType type = httpEntityType(forClassWithGenerics(io.reactivex.Single.class, String.class));
+		HttpEntity<io.reactivex.Single<String>> httpEntity = resolveValue(type, body);
+
+		assertEquals(this.request.getHeaders(), httpEntity.getHeaders());
+		assertEquals("line1", httpEntity.getBody().blockingGet());
 	}
 
 	@Test
@@ -253,10 +300,8 @@ public class HttpEntityArgumentResolverTests {
 
 	@SuppressWarnings("unchecked")
 	private <T> T resolveValue(ResolvableType type, String body) {
-
-		this.request.getHeaders().add("foo", "bar");
-		this.request.getHeaders().setContentType(MediaType.TEXT_PLAIN);
-		this.request.writeWith(Flux.just(dataBuffer(body)));
+		this.request.setHeader("foo", "bar").setHeader("Content-Type", "text/plain");
+		this.request.setBody(body);
 
 		MethodParameter param = this.testMethod.resolveParam(type);
 		Mono<Object> result = this.resolver.resolveArgument(param, new ExtendedModelMap(), this.exchange);
@@ -271,7 +316,6 @@ public class HttpEntityArgumentResolverTests {
 
 	@SuppressWarnings("unchecked")
 	private <T> HttpEntity<T> resolveValueWithEmptyBody(ResolvableType type) {
-		this.request.writeWith(Flux.empty());
 		MethodParameter param = this.testMethod.resolveParam(type);
 		Mono<Object> result = this.resolver.resolveArgument(param, new ExtendedModelMap(), this.exchange);
 		HttpEntity<String> httpEntity = (HttpEntity<String>) result.block(Duration.ofSeconds(5));
@@ -295,7 +339,10 @@ public class HttpEntityArgumentResolverTests {
 			HttpEntity<Mono<String>> monoBody,
 			HttpEntity<Flux<String>> fluxBody,
 			HttpEntity<Single<String>> singleBody,
+			HttpEntity<io.reactivex.Single<String>> xJava2SingleBody,
 			HttpEntity<Observable<String>> observableBody,
+			HttpEntity<io.reactivex.Observable<String>> rxJava2ObservableBody,
+			HttpEntity<Flowable<String>> flowableBody,
 			HttpEntity<CompletableFuture<String>> completableFutureBody,
 			RequestEntity<String> requestEntity) {}
 

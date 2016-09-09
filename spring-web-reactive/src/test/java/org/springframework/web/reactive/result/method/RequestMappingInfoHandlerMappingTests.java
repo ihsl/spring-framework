@@ -17,7 +17,6 @@
 package org.springframework.web.reactive.result.method;
 
 import java.lang.reflect.Method;
-import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Arrays;
 import java.util.Collections;
@@ -30,17 +29,17 @@ import java.util.function.Consumer;
 import org.junit.Before;
 import org.junit.Test;
 import reactor.core.publisher.Mono;
-import reactor.test.TestSubscriber;
 
 import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
-import org.springframework.http.server.reactive.MockServerHttpRequest;
-import org.springframework.http.server.reactive.MockServerHttpResponse;
+import org.springframework.mock.http.server.reactive.test.MockServerHttpRequest;
+import org.springframework.mock.http.server.reactive.test.MockServerHttpResponse;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.stereotype.Controller;
+import org.springframework.tests.TestSubscriber;
 import org.springframework.ui.ExtendedModelMap;
 import org.springframework.ui.ModelMap;
 import org.springframework.util.MultiValueMap;
@@ -345,7 +344,7 @@ public class RequestMappingInfoHandlerMappingTests {
 
 
 	private ServerWebExchange createExchange(HttpMethod method, String url) throws URISyntaxException {
-		ServerHttpRequest request = new MockServerHttpRequest(method, new URI(url));
+		ServerHttpRequest request = new MockServerHttpRequest(method, url);
 		WebSessionManager sessionManager = new MockWebSessionManager();
 		return new DefaultServerWebExchange(request, new MockServerHttpResponse(), sessionManager);
 

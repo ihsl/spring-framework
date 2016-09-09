@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2015 the original author or authors.
+ * Copyright 2002-2016 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -71,14 +71,20 @@ public class DispatcherHandler implements WebHandler, ApplicationContextAware {
 	private List<HandlerResultHandler> resultHandlers;
 
 
+	public DispatcherHandler() {
+	}
+
+	public DispatcherHandler(ApplicationContext applicationContext) {
+		initStrategies(applicationContext);
+	}
+
+
 	@Override
 	public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
 		initStrategies(applicationContext);
 	}
 
-
 	protected void initStrategies(ApplicationContext context) {
-
 		Map<String, HandlerMapping> mappingBeans = BeanFactoryUtils.beansOfTypeIncludingAncestors(
 				context, HandlerMapping.class, true, false);
 

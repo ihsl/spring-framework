@@ -19,7 +19,6 @@ package org.springframework.web.client;
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -112,7 +111,7 @@ public class RestTemplateIntegrationTests extends AbstractJettyServerTestCase {
 	@Test
 	public void postForLocationEntity() throws URISyntaxException {
 		HttpHeaders entityHeaders = new HttpHeaders();
-		entityHeaders.setContentType(new MediaType("text", "plain", Charset.forName("ISO-8859-15")));
+		entityHeaders.setContentType(new MediaType("text", "plain", StandardCharsets.ISO_8859_1));
 		HttpEntity<String> entity = new HttpEntity<>(helloWorld, entityHeaders);
 		URI location = template.postForLocation(baseUrl + "/{method}", entity, "post");
 		assertEquals("Invalid location", new URI(baseUrl + "/post/1"), location);
@@ -241,9 +240,7 @@ public class RestTemplateIntegrationTests extends AbstractJettyServerTestCase {
 		assertFalse(s.contains("\"without\":\"without\""));
 	}
 
-	// SPR-12123
-
-	@Test
+	@Test  // SPR-12123
 	public void serverPort() {
 		String s = template.getForObject("http://localhost:{port}/get", String.class, port);
 		assertEquals("Invalid content", helloWorld, s);
@@ -264,8 +261,11 @@ public class RestTemplateIntegrationTests extends AbstractJettyServerTestCase {
 		assertTrue(content.contains("\"type\":\"bar\""));
 	}
 
+
 	public interface MyJacksonView1 {};
+
 	public interface MyJacksonView2 {};
+
 
 	public static class MySampleBean {
 
@@ -311,6 +311,7 @@ public class RestTemplateIntegrationTests extends AbstractJettyServerTestCase {
 		}
 	}
 
+
 	@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
 	public static class ParentClass {
 
@@ -332,6 +333,7 @@ public class RestTemplateIntegrationTests extends AbstractJettyServerTestCase {
 		}
 	}
 
+
 	@JsonTypeName("foo")
 	public static class Foo extends ParentClass {
 
@@ -342,6 +344,7 @@ public class RestTemplateIntegrationTests extends AbstractJettyServerTestCase {
 			super(parentProperty);
 		}
 	}
+
 
 	@JsonTypeName("bar")
 	public static class Bar extends ParentClass {

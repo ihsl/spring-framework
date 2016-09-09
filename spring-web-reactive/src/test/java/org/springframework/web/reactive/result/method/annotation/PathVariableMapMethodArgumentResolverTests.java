@@ -17,7 +17,6 @@
 package org.springframework.web.reactive.result.method.annotation;
 
 import java.lang.reflect.Method;
-import java.net.URI;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -28,8 +27,8 @@ import reactor.core.publisher.Mono;
 
 import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.server.reactive.MockServerHttpRequest;
-import org.springframework.http.server.reactive.MockServerHttpResponse;
+import org.springframework.mock.http.server.reactive.test.MockServerHttpRequest;
+import org.springframework.mock.http.server.reactive.test.MockServerHttpResponse;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.ui.ModelMap;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -63,7 +62,7 @@ public class PathVariableMapMethodArgumentResolverTests {
 	public void setUp() throws Exception {
 		this.resolver = new PathVariableMapMethodArgumentResolver();
 
-		ServerHttpRequest request = new MockServerHttpRequest(HttpMethod.GET, new URI("/"));
+		ServerHttpRequest request = new MockServerHttpRequest(HttpMethod.GET, "/");
 		WebSessionManager sessionManager = new MockWebSessionManager();
 		this.exchange = new DefaultServerWebExchange(request, new MockServerHttpResponse(), sessionManager);
 

@@ -16,15 +16,14 @@
 
 package org.springframework.web.reactive.result.condition;
 
-import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Collection;
 
 import org.junit.Test;
 
 import org.springframework.http.HttpMethod;
-import org.springframework.http.server.reactive.MockServerHttpRequest;
-import org.springframework.http.server.reactive.MockServerHttpResponse;
+import org.springframework.mock.http.server.reactive.test.MockServerHttpRequest;
+import org.springframework.mock.http.server.reactive.test.MockServerHttpResponse;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.adapter.DefaultServerWebExchange;
@@ -134,7 +133,7 @@ public class ParamsRequestConditionTests {
 	}
 
 	private ServerWebExchange createExchange(String paramName, String paramValue) throws URISyntaxException {
-		ServerHttpRequest request = new MockServerHttpRequest(HttpMethod.GET, new URI("/"));
+		ServerHttpRequest request = new MockServerHttpRequest(HttpMethod.GET, "/");
 		if (paramName != null) {
 			request.getQueryParams().add(paramName, paramValue);
 		}

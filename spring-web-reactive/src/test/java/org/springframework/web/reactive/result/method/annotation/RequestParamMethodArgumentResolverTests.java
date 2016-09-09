@@ -17,7 +17,6 @@
 package org.springframework.web.reactive.result.method.annotation;
 
 import java.lang.reflect.Method;
-import java.net.URI;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Optional;
@@ -25,7 +24,6 @@ import java.util.Optional;
 import org.junit.Before;
 import org.junit.Test;
 import reactor.core.publisher.Mono;
-import reactor.test.TestSubscriber;
 
 import org.springframework.core.LocalVariableTableParameterNameDiscoverer;
 import org.springframework.core.MethodParameter;
@@ -35,9 +33,10 @@ import org.springframework.core.convert.ConversionService;
 import org.springframework.core.convert.support.DefaultConversionService;
 import org.springframework.core.convert.support.GenericConversionService;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.server.reactive.MockServerHttpRequest;
-import org.springframework.http.server.reactive.MockServerHttpResponse;
+import org.springframework.mock.http.server.reactive.test.MockServerHttpRequest;
+import org.springframework.mock.http.server.reactive.test.MockServerHttpResponse;
 import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.tests.TestSubscriber;
 import org.springframework.util.ReflectionUtils;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.server.ServerWebExchange;
@@ -81,7 +80,7 @@ public class RequestParamMethodArgumentResolverTests {
 		ParameterNameDiscoverer paramNameDiscoverer = new LocalVariableTableParameterNameDiscoverer();
 		Method method = ReflectionUtils.findMethod(getClass(), "handle", (Class<?>[]) null);
 
-		ServerHttpRequest request = new MockServerHttpRequest(HttpMethod.GET, new URI("/"));
+		ServerHttpRequest request = new MockServerHttpRequest(HttpMethod.GET, "/");
 		WebSessionManager sessionManager = new MockWebSessionManager();
 		this.exchange = new DefaultServerWebExchange(request, new MockServerHttpResponse(), sessionManager);
 
